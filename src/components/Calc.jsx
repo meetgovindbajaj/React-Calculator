@@ -9,8 +9,25 @@ const useEnhancedEffect =
 
 const Calc = () => {
   const [node, setNode] = useState(null);
+  const [styles, setStyles] = useState({
+    fontSize: 3,
+    diff: 0,
+    resultBoxWidth: 0,
+    parentBoxWidth: 0,
+  });
   useEnhancedEffect(() => {
     setNode(document.getElementById("calc"));
+    setStyles({
+      ...styles,
+      ...{
+        resultBoxWidth: document
+          .getElementById("resultBox")
+          .getBoundingClientRect().width,
+        parentBoxWidth: document
+          .getElementById("parentBox")
+          .getBoundingClientRect().width,
+      },
+    });
   }, []);
   const btnValues = [
     ["C", "D", "∓", "mod", "÷"],
@@ -59,6 +76,7 @@ const Calc = () => {
                 : controller.val + btn,
           });
         }
+        changeFont(1);
         break;
       case "∓":
         setController({
@@ -115,6 +133,7 @@ const Calc = () => {
             ...{ sign: btn, valOnHold: true },
           });
         }
+        changeFont(3);
         break;
       case "=":
         if (controller.sign !== null && !controller.valOnHold) {
@@ -137,31 +156,65 @@ const Calc = () => {
             ...{ sign: null, valOnHold: false, res: "0" },
           });
         }
+        changeFont(3);
         break;
       case "C":
         setController({
           ...controller,
-          ...{ sign: null, valOnHold: false, res: "0", val: "0" },
-        });
-        break;
-      case "D":
-        const result = calcRes("÷", Number(controller.val), 10);
-        setController({
-          ...controller,
           ...{
-            val:
-              result > 1 || result < -1
-                ? controller.val.substring(0, controller.val.length - 1)
-                : "0",
-            valOnHold: controller.sign
-              ? result > 1 || result < -1
-                ? false
-                : true
-              : false,
+            sign: null,
+            valOnHold: false,
+            res: "0",
+            val: "0",
           },
         });
+        changeFont(3);
+        break;
+      case "D":
+        let valValue = controller.val.includes("Infinity")
+          ? "0"
+          : controller.val.includes("NaN")
+          ? "0"
+          : controller.val.substring(0, controller.val.length - 1);
+        valValue = valValue === "-" || valValue === "" ? "0" : valValue;
+        const isValZero = valValue === "";
+        if (
+          isValZero &&
+          controller.valOnHold === false &&
+          controller.sign !== null
+        ) {
+          setController({
+            ...controller,
+            ...{
+              val: "0",
+              valOnHold: true,
+            },
+          });
+          changeFont(3);
+        } else if (
+          isValZero &&
+          controller.valOnHold &&
+          controller.sign !== null
+        ) {
+          setController({
+            val: controller.res,
+            res: "0",
+            sign: null,
+            valOnHold: false,
+          });
+          changeFont(3);
+        } else {
+          setController({
+            ...controller,
+            ...{
+              val: valValue,
+            },
+          });
+          changeFont(2);
+        }
         break;
       default:
+        changeFont(3);
         break;
     }
   };
@@ -173,11 +226,67 @@ const Calc = () => {
       case "+":
         return (op1 + op2).toString();
       case "÷":
-        return op2 !== 0 ? (op1 / op2).toString() : "0";
+        const result = (op1 / op2).toString();
+        return result === "NaN" || result === "Infinity" ? "0" : result;
       case "mod":
         return (op1 % op2).toString();
       case "⨯":
         return (op1 * op2).toString();
+      default:
+        break;
+    }
+  };
+
+  const changeFont = (mode) => {
+    const rW = document
+      .getElementById("resultBox")
+      .getBoundingClientRect().width;
+    const pW = document
+      .getElementById("parentBox")
+      .getBoundingClientRect().width;
+    let fsChange, fs;
+    const change = 0.3;
+    switch (mode) {
+      case 1:
+        fs = styles.fontSize - styles.diff - change > 0.6;
+        fsChange = pW - rW < 70;
+        setStyles({
+          ...styles,
+          ...{
+            resultBoxWidth: rW,
+            parentBoxWidth: pW,
+            diff: fsChange
+              ? fs
+                ? styles.diff + change
+                : styles.diff
+              : styles.diff,
+          },
+        });
+        break;
+      case 2:
+        fs = styles.fontSize - styles.diff + change < 3;
+        fsChange = pW - rW > 70;
+        setStyles({
+          ...styles,
+          ...{
+            resultBoxWidth: rW,
+            parentBoxWidth: pW,
+            diff: fsChange
+              ? fs
+                ? styles.diff - change
+                : styles.diff
+              : styles.diff,
+          },
+        });
+        break;
+      case 3:
+        setStyles({
+          fontSize: 3,
+          diff: 0,
+          resultBoxWidth: rW,
+          parentBoxWidth: pW,
+        });
+        break;
       default:
         break;
     }
@@ -230,12 +339,10 @@ const Calc = () => {
 
   useEffect(() => {
     window.addEventListener("keydown", handleUserKeyPress);
-
     return () => {
       window.removeEventListener("keydown", handleUserKeyPress);
     };
   });
-
   return (
     <CssVarsProvider
       colorSchemeNode={node || null}
@@ -269,7 +376,9 @@ const Calc = () => {
                 }}
               >
                 {controller.sign
-                  ? `${controller.res} ${controller.sign} ${controller.val}`
+                  ? `${controller.res} ${controller.sign} ${
+                      controller.valOnHold ? "_" : controller.val
+                    }`
                   : ""}
               </Typography>
               <Typography
@@ -278,11 +387,15 @@ const Calc = () => {
                   height: "7rem",
                   textAlign: "end",
                   padding: "1rem",
-                  fontSize: "2.5rem",
-                  wordWrap: "break-word",
                 }}
+                id="parentBox"
               >
-                {controller.valOnHold ? "__" : controller.val}
+                <span
+                  id="resultBox"
+                  style={{ fontSize: `${styles.fontSize - styles.diff}rem` }}
+                >
+                  {controller.valOnHold ? "" : controller.val}
+                </span>
               </Typography>
             </Grid>
             {btnValues.flat().map((btn, i) => {
