@@ -153,7 +153,7 @@ const Calc = () => {
         } else {
           setController({
             ...controller,
-            ...{ sign: null, valOnHold: false, res: "0" },
+            ...{ sign: null, valOnHold: false, res: "0", val: controller.res },
           });
         }
         changeFont(3);
@@ -171,13 +171,11 @@ const Calc = () => {
         changeFont(3);
         break;
       case "D":
-        let valValue = controller.val.includes("Infinity")
-          ? "0"
-          : controller.val.includes("NaN")
-          ? "0"
-          : controller.val.substring(0, controller.val.length - 1);
-        valValue = valValue === "-" || valValue === "" ? "0" : valValue;
-        const isValZero = valValue === "";
+        const valValue =
+          controller.val.includes("Infinity") || controller.val.includes("NaN")
+            ? "0"
+            : controller.val.substring(0, controller.val.length - 1);
+        const isValZero = valValue === "" || valValue === "-";
         if (
           isValZero &&
           controller.valOnHold === false &&
@@ -207,7 +205,7 @@ const Calc = () => {
           setController({
             ...controller,
             ...{
-              val: valValue,
+              val: valValue !== "" && valValue !== "-" ? valValue : "0",
             },
           });
           changeFont(2);
