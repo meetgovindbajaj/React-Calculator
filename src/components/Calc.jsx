@@ -373,11 +373,20 @@ const Calc = () => {
                   height: "2rem",
                   textAlign: "end",
                   padding: "1rem",
+                  opacity: ".65",
                 }}
               >
                 {controller.sign
                   ? `${controller.res} ${controller.sign} ${
-                      controller.valOnHold ? "_" : controller.val
+                      controller.valOnHold
+                        ? ""
+                        : controller.val +
+                          " = " +
+                          calcRes(
+                            controller.sign,
+                            Number(controller.res),
+                            Number(controller.val)
+                          )
                     }`
                   : ""}
               </Typography>
